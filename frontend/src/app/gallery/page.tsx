@@ -1,15 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useChatContext } from "@/components/chat/chat-context";
 import { ResearchItem } from "@/lib/api";
 import { Calendar } from "lucide-react";
 
 export default function GalleryPage() {
-  const { llmClient } = useChatContext();
-  const [researchItems, setResearchItems] = useState<ResearchItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { researchItems, galleryLoading, galleryError, fetchGalleryData, clearGalleryData } = useChatContext();
   const [columnsCount, setColumnsCount] = useState(10);
   const columnRefs = useRef<(HTMLDivElement | null)[]>([]);
   const isAdjustingRef = useRef(false);
@@ -56,32 +54,9 @@ export default function GalleryPage() {
   };
 
   useEffect(() => {
-    const fetchResearch = async () => {
-      try {
-        setLoading(true);
-        let items = await llmClient.fetchResearch();
-
-        // Duplicate and randomize items until we have at least 200 (cards are duplicated within rows)
-        const minItems = 200;
-        if (items.length > 0) {
-          const duplicatedItems: ResearchItem[] = [];
-          while (duplicatedItems.length < minItems) {
-            const shuffled = [...items].sort(() => Math.random() - 0.5);
-            duplicatedItems.push(...shuffled);
-          }
-          items = duplicatedItems.slice(0, minItems);
-        }
-
-        setResearchItems(items);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch research");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchResearch();
-  }, [llmClient]);
+    // Fetch gallery data only if not already loaded
+    fetchGalleryData();
+  }, [fetchGalleryData]);
 
   // Determine how many columns fit the viewport
   useEffect(() => {
@@ -109,7 +84,7 @@ export default function GalleryPage() {
     return () => cancelAnimationFrame(raf);
   }, [columnsCount, researchItems.length]);
 
-  if (loading) {
+  if (galleryLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -120,13 +95,17 @@ export default function GalleryPage() {
     );
   }
 
-  if (error) {
+  if (galleryError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-destructive mb-4">Error: {error}</p>
+          <p className="text-destructive mb-4">Error: {galleryError}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              // Clear existing data and retry
+              clearGalleryData();
+              fetchGalleryData();
+            }}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
           >
             Try Again
@@ -151,7 +130,10 @@ export default function GalleryPage() {
           className="h-full flex flex-col gap-1 overflow-y-scroll hide-scrollbar"
         >
           {duplicatedColumnItems.map((item, index) => (
-            <ResearchCard key={`${item.researchID}-c${col}-${index}`} item={item} />
+            <ResearchCard
+              key={`${item.researchID}-c${col}-${index}`}
+              item={item}
+            />
           ))}
         </div>
       </div>
@@ -181,7 +163,10 @@ function ResearchCard({ item }: ResearchCardProps) {
   });
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border bg-background transition-all duration-300 cursor-pointer w-48 flex-shrink-0">
+    <Link href={`/gallery/${item.researchID}`}>
+      <div
+        className="group relative overflow-hidden rounded-lg border border-border bg-background transition-all duration-300 cursor-pointer w-48 flex-shrink-0"
+      >
       <div className="relative h-36 overflow-hidden rounded-lg">
         {item.thumbnail ? (
           <img
@@ -211,5 +196,6 @@ function ResearchCard({ item }: ResearchCardProps) {
         </div>
       </div>
     </div>
+    </Link>
   );
 }

@@ -12,6 +12,15 @@ export interface ChatMessage {
   tool_call_id?: string;
 }
 
+export interface ResearchItem {
+  researchID: number;
+  title: string;
+  thumbnail: string;
+  keywords: string[];
+  created_at: string;
+  updated_at: string;
+}
+
 // Define types for streamed events
 interface StreamText {
   type: "chunk";
@@ -124,6 +133,20 @@ export class LLMClient {
       }
     } catch (error) {
       onError(error);
+    }
+  }
+
+  async fetchResearch(): Promise<ResearchItem[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/research`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch research: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.research || [];
+    } catch (error) {
+      console.error("Error fetching research:", error);
+      throw error;
     }
   }
 

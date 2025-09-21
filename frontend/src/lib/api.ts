@@ -75,7 +75,7 @@ export class LLMClient {
   ): Promise<void> {
     try {
       //console.log("streamChatResponse", messages);
-      const response = await fetch(`${this.baseUrl}/chat`, {
+      const response = await fetch(`${this.baseUrl}/research`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

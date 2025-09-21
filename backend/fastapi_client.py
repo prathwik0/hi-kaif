@@ -56,7 +56,7 @@ class FastAPIClient:
 
         async with self.http_client.stream(
             "POST",
-            f"{self.base_url}/chat",
+            f"{self.base_url}/research",
             json=request_data,
             headers={"Accept": "text/event-stream"},
         ) as response:

@@ -2,6 +2,7 @@ import json
 from typing import Optional, List, Dict, Any, AsyncGenerator, Tuple, Union
 from contextlib import asynccontextmanager
 from io import BytesIO
+import asyncio
 
 from dotenv import load_dotenv
 from fastapi import (
@@ -89,7 +90,7 @@ async def get_research_by_id(research_id: int):
     return {"research": research}
 
 
-@app.post("/chat")
+@app.post("/research")
 async def chat_stream_with_history(request: ChatHistoryRequest):
     """Stream chat response using provided message history"""
     if not litellm_client:
@@ -97,31 +98,47 @@ async def chat_stream_with_history(request: ChatHistoryRequest):
 
     chat_history = request.messages
 
-    async def generate_response() -> AsyncGenerator[str, None]:
+    # Use a queue and a background task to decouple long-running work from the client connection
+    queue: asyncio.Queue = asyncio.Queue()
+    client_connected = True
+
+    async def run_chat() -> None:
+        nonlocal client_connected
         try:
             assert isinstance(litellm_client, LiteLLMClient), "Client not initialized"
-            # Use default model if none provided
             model = request.model or "gemini/gemini-2.5-flash"
             async for event_type, event_data in litellm_client.chat_stream(
                 chat_history=chat_history, model=model
             ):
-                # event_type chunk, tool_call, tool_result is already formatted as SSE data
-                if event_type == "chunk":
-                    yield str(event_data)
-                elif event_type == "tool_call":
-                    yield str(event_data)
-                elif event_type == "tool_result":
-                    yield str(event_data)
-                elif event_type == "error":
-                    # Send error as SSE
-                    yield f"data: {json.dumps({'content': event_data, 'type': 'error'})}\n\n"
-                elif event_type == "full_response":
-                    # Send full response and completion signal
-                    yield f"data: {json.dumps({'full_response': event_data, 'type': 'full_response'})}\n\n"
-
+                if not client_connected:
+                    # Stop pushing to the queue if the client is gone, but keep processing
+                    continue
+                # Forward pre-formatted SSE strings
+                await queue.put(str(event_data))
         except Exception as e:
-            error_msg = f"Error in chat stream: {str(e)}"
-            yield f"data: {json.dumps({'content': error_msg, 'type': 'error'})}\n\n"
+            if client_connected:
+                error_msg = f"Error in chat stream: {str(e)}"
+                await queue.put(
+                    f"data: {json.dumps({'content': error_msg, 'type': 'error'})}\n\n"
+                )
+        finally:
+            if client_connected:
+                await queue.put(None)
+
+    async def generate_response() -> AsyncGenerator[str, None]:
+        nonlocal client_connected
+        chat_task = asyncio.create_task(run_chat())
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                yield item
+        except asyncio.CancelledError:
+            # Client disconnected; continue background processing without streaming
+            client_connected = False
+            # Do not cancel chat_task; allow it to finish so DB updates persist
+            return
 
     return StreamingResponse(
         generate_response(),

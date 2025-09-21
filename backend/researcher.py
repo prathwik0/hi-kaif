@@ -283,7 +283,14 @@ class LiteLLMClient:
                     if research_id:
                         try:
                             # Prepare chat history (full response) for storage
-                            chat_history_for_logs = ensure_serializable(chat_messages)
+                            non_system_chat_messages = [
+                                msg
+                                for msg in chat_messages
+                                if msg.get("role") != "system"
+                            ]
+                            chat_history_for_logs = ensure_serializable(
+                                non_system_chat_messages
+                            )
 
                             # Save to database
                             db.insert_research_details(

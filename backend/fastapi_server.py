@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from models import transcribe_audio
 from researcher import LiteLLMClient
+from database import db
 
 load_dotenv()
 
@@ -71,6 +72,12 @@ app.add_middleware(
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "litellm-chat"}
+
+
+@app.get("/research")
+async def get_research():
+    """Get the 50 latest research items"""
+    return {"research": db.list_research()}
 
 
 @app.post("/chat")

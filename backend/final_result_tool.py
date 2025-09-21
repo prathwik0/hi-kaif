@@ -1,4 +1,9 @@
 from typing import Dict, Any
+import sys
+import os
+
+
+from database import db
 
 
 def get_final_result_tool_definition() -> Dict[str, Any]:
@@ -95,16 +100,27 @@ def get_final_result_tool_definition() -> Dict[str, Any]:
 
 async def call_final_result_tool(arguments: Dict[str, Any]) -> Dict[str, Any]:
     """Process the final result tool call with research data."""
+    # Extract data for database
+    title = arguments.get("title", "")
+    thumbnail = arguments.get("thumbnail", "")
+    keywords = arguments.get("keywords", [])
+
+    # Save to database
+    research_id = db.insert_research(
+        title=title, thumbnail=thumbnail, keywords=keywords
+    )
+
     return {
         "final_result_tool": True,
         "result": "Final result tool called and executed successfully",
-        "title": arguments.get("title", ""),
-        "keywords": arguments.get("keywords", []),
+        "research_id": research_id,
+        "title": title,
+        "keywords": keywords,
         "introduction": arguments.get("introduction", ""),
         "content": arguments.get("content", ""),
         "conclusion": arguments.get("conclusion", ""),
         "references": arguments.get("references", []),
-        "thumbnail": arguments.get("thumbnail", ""),
+        "thumbnail": thumbnail,
         "images": arguments.get("images", []),
         "timestamp": "2025-01-01T00:00:00Z",
         "success": True,

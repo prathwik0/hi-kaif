@@ -5,12 +5,13 @@ from types import SimpleNamespace
 
 from dotenv import load_dotenv
 from litellm import acompletion
-from models.wikipedia_tool import search_wikipedia, get_wikipedia_tool_definition
-from models.final_result_tool import (
+from wikipedia_tool import search_wikipedia, get_wikipedia_tool_definition
+from final_result_tool import (
     get_final_result_tool_definition,
     call_final_result_tool,
 )
 from system_prompts import RESEARCH_AGENT_PROMPT
+from database import db
 
 
 load_dotenv()
@@ -105,6 +106,7 @@ class LiteLLMClient:
             }
             chat_messages.insert(0, system_prompt)
         new_messages = []
+        final_result_data = None
 
         while True:
             try:
@@ -215,6 +217,11 @@ class LiteLLMClient:
                         if tool_name in local_tool_names:
                             # Call local tool
                             result = await self._call_local_tool(tool_name, args_json)
+
+                            # Capture final result data for database storage
+                            if tool_name == "final_result_tool":
+                                final_result_data = result
+
                             tool_result_content = json.dumps(
                                 ensure_serializable(result)
                             )
@@ -265,12 +272,31 @@ class LiteLLMClient:
                             f"data: {json.dumps({'tr': {'tool_call_id': tool_call_id, 'content': error_tool_message['content'], 'error': True}})}\n\n",
                         )
 
-                # Check if final result tool was called - if so, break the loop
+                # Check if final result tool was called - if so, save to database and break the loop
                 final_result_called = any(
                     tc["function"]["name"] == "final_result_tool"
                     for tc in tool_calls_data
                 )
-                if final_result_called:
+                if final_result_called and final_result_data:
+                    # Save research details to database
+                    research_id = final_result_data.get("research_id")
+                    if research_id:
+                        try:
+                            # Prepare chat history (full response) for storage
+                            chat_history_for_logs = ensure_serializable(chat_messages)
+
+                            # Save to database
+                            db.insert_research_details(
+                                research_id=research_id,
+                                details=final_result_data,
+                                logs=chat_history_for_logs,
+                            )
+                        except Exception as e:
+                            # Log error but don't break the flow
+                            print(
+                                f"Error saving research details to database: {e}",
+                                flush=True,
+                            )
                     break
 
                 # Continue the loop to get the next assistant response

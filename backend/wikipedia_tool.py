@@ -16,7 +16,7 @@ async def get_page_content(page_title: str) -> Dict[str, Any]:
             "action": "query",
             "format": "json",
             "titles": page_title,
-            "prop": "extracts",
+            "prop": "extracts|pageprops",
             "explaintext": True,
             "exsectionformat": "plain",
             "exlimit": "max",

@@ -1,9 +1,11 @@
 import json
+import asyncio
 from typing import Optional, List, Dict, Any, AsyncGenerator, Tuple, Union
 from types import SimpleNamespace
 
 from dotenv import load_dotenv
 from litellm import acompletion
+from models.wikipedia_tool import search_wikipedia, get_wikipedia_tool_definition
 
 
 load_dotenv()
@@ -36,20 +38,21 @@ class LiteLLMClient:
     def __init__(self):
         """Initialize LiteLLM client."""
         self.local_tools = [
+            get_wikipedia_tool_definition(),
             {
-                "name": "dummy_tool",
-                "description": "A simple dummy tool that returns a sample response for demonstration purposes.",
+                "name": "final_result_tool",
+                "description": "The final summary of the deep research task.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "message": {
+                        "final_result": {
                             "type": "string",
-                            "description": "A message to process with the dummy tool",
+                            "description": "The final summary of the deep research task in markdown format",
                         }
                     },
-                    "required": ["message"],
+                    "required": ["final_result"],
                 },
-            }
+            },
         ]
 
     def _convert_tools_to_openai_format(self) -> List[Dict[str, Any]]:
@@ -78,14 +81,18 @@ class LiteLLMClient:
         self, tool_name: str, arguments: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Handle local tool calls"""
-        if tool_name == "dummy_tool":
-            message = arguments.get("message", "No message provided")
+        if tool_name == "wikipedia_search":
+            query = arguments.get("query", "")
+            limit = arguments.get("limit", 5)
+            return await search_wikipedia(query, limit)
+        elif tool_name == "final_result_tool":
+            final_result = arguments.get("final_result", "")
             return {
-                "dummy_tool": True,
-                "message": message,
-                "response": f"Processed dummy message: {message}",
+                "final_result_tool": True,
+                "response": final_result,  # Return the same comprehensive result
                 "timestamp": "2025-01-01T00:00:00Z",
                 "success": True,
+                "processed": True,
             }
         else:
             raise ValueError(f"Unknown local tool: {tool_name}")
@@ -107,7 +114,7 @@ class LiteLLMClient:
         if not has_system_message:
             system_prompt = {
                 "role": "system",
-                "content": """You are a helpful assistant.""",
+                "content": """You are a deep research agent. You have access to a wikipedia_search tool that can search Wikipedia for comprehensive information. Use this tool when you need to gather factual information about topics, people, events, or concepts. After presenting your extensive research findings, call the final_result_tool to return a short summary of the deep research task. Don't generate a single token after this tool call.""",
             }
             chat_messages.insert(0, system_prompt)
         new_messages = []

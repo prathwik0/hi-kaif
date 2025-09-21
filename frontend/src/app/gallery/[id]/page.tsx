@@ -4,7 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useChatContext } from "@/components/chat/chat-context";
 import { ResearchDetail } from "@/lib/api";
-import { Calendar, ArrowLeft, Tag, Clock, FileText } from "lucide-react";
+import { Calendar, ArrowLeft, Tag, Clock, FileText, ChevronRight } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { MarkdownRenderer } from "@/components/chat/markdown-renderer";
+import { cn } from "@/lib/utils";
 
 export default function ResearchDetailPage() {
   const { id } = useParams();
@@ -13,6 +16,10 @@ export default function ResearchDetailPage() {
   const [research, setResearch] = useState<ResearchDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [introductionOpen, setIntroductionOpen] = useState(true);
+  const [contentOpen, setContentOpen] = useState(true);
+  const [conclusionOpen, setConclusionOpen] = useState(true);
+  const [referencesOpen, setReferencesOpen] = useState(true);
 
   useEffect(() => {
     const fetchResearch = async () => {
@@ -148,22 +155,174 @@ export default function ResearchDetailPage() {
         </div>
 
         {/* Research Details */}
-        {research.details && (
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <FileText className="w-5 h-5 text-muted-foreground" />
-              <h2 className="text-xl font-semibold">Research Details</h2>
+        {research.details && (() => {
+          let details;
+          try {
+            details = typeof research.details === 'string'
+              ? JSON.parse(research.details)
+              : research.details;
+          } catch (e) {
+            // If parsing fails, treat as raw string
+            return (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="w-5 h-5 text-muted-foreground" />
+                  <h2 className="text-xl font-semibold">Research Details</h2>
+                </div>
+                <div className="bg-card rounded-lg border p-6">
+                  <pre className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
+                    {research.details}
+                  </pre>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="mb-8">
+              <div className="space-y-4">
+                {/* Introduction Section */}
+                {details.introduction && (
+                  <Collapsible open={introductionOpen} onOpenChange={setIntroductionOpen}>
+                    <div className="flex items-center justify-between py-2">
+                      <h3 className="text-2xl font-semibold text-foreground">Introduction</h3>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          <span>{introductionOpen ? 'Hide' : 'Show'}</span>
+                          <ChevronRight className={cn("h-4 w-4 transition-transform", introductionOpen && "rotate-90")} />
+                        </button>
+                      </CollapsibleTrigger>
+                    </div>
+                    <CollapsibleContent>
+                      <div className="prose prose-sm max-w-none text-foreground/90 leading-relaxed">
+                        <MarkdownRenderer>{details.introduction}</MarkdownRenderer>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {/* Images Section */}
+                {Array.isArray(details.images) && details.images.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-4">
+                    {details.images.slice(0, 6).map((image: any, index: number) => (
+                      <div key={index} className="group">
+                        <a
+                          href={image.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <img
+                            src={image.url}
+                            alt={image.description || `Related image ${index + 1}`}
+                            className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </a>
+                        {image.description && (
+                          <p className="text-xs text-muted-foreground mt-2 px-1">
+                            {image.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Content Section */}
+                {details.content && (
+                  <Collapsible open={contentOpen} onOpenChange={setContentOpen}>
+                    <div className="flex items-center justify-between py-2">
+                      <h3 className="text-2xl font-semibold text-foreground">Content</h3>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          <span>{contentOpen ? 'Hide' : 'Show'}</span>
+                          <ChevronRight className={cn("h-4 w-4 transition-transform", contentOpen && "rotate-90")} />
+                        </button>
+                      </CollapsibleTrigger>
+                    </div>
+                    <CollapsibleContent>
+                      <div className="prose prose-sm max-w-none text-foreground/90 leading-relaxed">
+                        <MarkdownRenderer>{details.content}</MarkdownRenderer>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {/* Conclusion Section */}
+                {details.conclusion && (
+                  <Collapsible open={conclusionOpen} onOpenChange={setConclusionOpen}>
+                    <div className="flex items-center justify-between py-2">
+                      <h3 className="text-2xl font-semibold text-foreground">Conclusion</h3>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          <span>{conclusionOpen ? 'Hide' : 'Show'}</span>
+                          <ChevronRight className={cn("h-4 w-4 transition-transform", conclusionOpen && "rotate-90")} />
+                        </button>
+                      </CollapsibleTrigger>
+                    </div>
+                    <CollapsibleContent>
+                      <div className="prose prose-sm max-w-none text-foreground/90 leading-relaxed">
+                        <MarkdownRenderer>{details.conclusion}</MarkdownRenderer>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {/* References Section */}
+                {details.references && Array.isArray(details.references) && details.references.length > 0 && (
+                  <Collapsible open={referencesOpen} onOpenChange={setReferencesOpen}>
+                    <div className="flex items-center justify-between py-2">
+                      <h3 className="text-2xl font-semibold text-foreground">References</h3>
+                      <CollapsibleTrigger asChild>
+                        <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          <span>{referencesOpen ? 'Hide' : 'Show'}</span>
+                          <ChevronRight className={cn("h-4 w-4 transition-transform", referencesOpen && "rotate-90")} />
+                        </button>
+                      </CollapsibleTrigger>
+                    </div>
+                    <CollapsibleContent>
+                      <div className="space-y-3 mt-4">
+                        {details.references.map((ref: any, index: number) => (
+                          <div key={index} className="flex items-start gap-4 p-4 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors">
+                            <span className="text-sm font-medium text-muted-foreground min-w-[24px] mt-0.5">
+                              [{index + 1}]
+                            </span>
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center gap-2">
+                                {ref.url ? (
+                                  <a
+                                    href={ref.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm font-medium text-primary hover:underline"
+                                  >
+                                    {ref.title}
+                                  </a>
+                                ) : (
+                                  <span className="text-sm font-medium text-foreground">{ref.title}</span>
+                                )}
+                                {ref.type && (
+                                  <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full border border-primary/20">
+                                    {ref.type}
+                                  </span>
+                                )}
+                              </div>
+                              {ref.accessed_date && (
+                                <div className="text-xs text-muted-foreground">
+                                  Accessed: {new Date(ref.accessed_date).toLocaleDateString()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </div>
             </div>
-            <div className="bg-card rounded-lg border p-6">
-              <pre className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
-                {typeof research.details === 'string'
-                  ? research.details
-                  : JSON.stringify(research.details, null, 2)
-                }
-              </pre>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Research Logs */}
         {research.logs && research.logs.length > 0 && (

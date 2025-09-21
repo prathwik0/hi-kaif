@@ -142,14 +142,14 @@ export function convertOpenAIMessages(
       !assistantIdHasBeenReusedThisCall
     ) {
       messageId = options.assistantMessageIdToReuse;
-      createdAtDate = new Date();
+      createdAtDate = (msg as any).timestamp ? new Date((msg as any).timestamp) : new Date();
       assistantIdHasBeenReusedThisCall = true;
     } else if (!Array.isArray(messages) && options?.id && index === 0) {
       messageId = options.id;
       createdAtDate = options.createdAt || new Date();
     } else {
       messageId = generateMessageId();
-      createdAtDate = new Date();
+      createdAtDate = (msg as any).timestamp ? new Date((msg as any).timestamp) : new Date();
     }
 
     const newMessage: Message = {

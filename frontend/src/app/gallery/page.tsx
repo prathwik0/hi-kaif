@@ -155,6 +155,19 @@ interface ResearchCardProps {
   item: ResearchItem;
 }
 
+// Array of pastel background colors
+const pastelColors = [
+  'bg-blue-300',
+  'bg-pink-300',
+  'bg-green-300',
+  'bg-yellow-300'
+];
+
+// Function to get random pastel color
+const getRandomPastelColor = () => {
+  return pastelColors[Math.floor(Math.random() * pastelColors.length)];
+};
+
 function ResearchCard({ item }: ResearchCardProps) {
   const formattedDate = new Date(item.created_at).toLocaleDateString('en-US', {
     month: 'short',
@@ -172,23 +185,21 @@ function ResearchCard({ item }: ResearchCardProps) {
           <img
             src={item.thumbnail}
             alt={item.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 contrast-80"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 contrast-100"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 flex items-center justify-center">
-            <div className="text-primary/60 text-2xl">📚</div>
-          </div>
+          <div className={`w-full h-full ${getRandomPastelColor()}`}></div>
         )}
 
         {/* Text overlay */}
-        <div className="absolute inset-0 px-2 py-1 flex flex-col justify-end">
+        <div className="absolute inset-0 px-2 py-2 flex flex-col justify-end">
           {/* Semi-transparent background for text readability */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent h-16 rounded-b-lg"></div>
-          <div className="relative z-10">
-            <h3 className="text-white text-sm font-bold leading-tight line-clamp-1 group-hover:text-primary transition-colors drop-shadow-lg">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent h-20 rounded-b-lg"></div>
+          <div className="relative z-10 min-h-0">
+            <h3 className="text-white text-sm font-bold leading-none group-hover:text-primary transition-colors truncate" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
               {item.title}
             </h3>
-            <div className="flex text-sm items-center gap-1 text-yellow-300 drop-shadow-md">
+            <div className="flex text-xs items-center gap-1 text-yellow-300" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
               <Calendar className="w-3 h-3" />
               <span>{formattedDate}</span>
             </div>

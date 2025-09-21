@@ -7,7 +7,22 @@ import { ResearchDetail } from "@/lib/api";
 import { Calendar, ArrowLeft, Tag, Clock, FileText, ChevronRight } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer";
+import { MessageList } from "@/components/chat/message-list";
+import { convertOpenAIMessages } from "@/lib/message-utils";
 import { cn } from "@/lib/utils";
+
+// Array of pastel background colors
+const pastelColors = [
+  'bg-blue-300',
+  'bg-pink-300',
+  'bg-green-300',
+  'bg-yellow-300'
+];
+
+// Function to get random pastel color
+const getRandomPastelColor = () => {
+  return pastelColors[Math.floor(Math.random() * pastelColors.length)];
+};
 
 export default function ResearchDetailPage() {
   const { id } = useParams();
@@ -20,6 +35,7 @@ export default function ResearchDetailPage() {
   const [contentOpen, setContentOpen] = useState(true);
   const [conclusionOpen, setConclusionOpen] = useState(true);
   const [referencesOpen, setReferencesOpen] = useState(true);
+  const [conversationOpen, setConversationOpen] = useState(false);
 
   useEffect(() => {
     const fetchResearch = async () => {
@@ -111,9 +127,7 @@ export default function ResearchDetailPage() {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 flex items-center justify-center">
-                <div className="text-primary/60 text-6xl">📚</div>
-              </div>
+              <div className={`w-full h-full ${getRandomPastelColor()}`}></div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6">
@@ -324,40 +338,6 @@ export default function ResearchDetailPage() {
           );
         })()}
 
-        {/* Research Logs */}
-        {research.logs && research.logs.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Research Conversation</h2>
-            <div className="space-y-4">
-              {research.logs.map((log: any, index: number) => (
-                <div key={index} className="bg-card rounded-lg border p-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-                      log.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {log.role === 'user' ? 'U' : 'A'}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium capitalize">{log.role}</span>
-                        {log.timestamp && (
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(log.timestamp).toLocaleString()}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {typeof log.content === 'string' ? log.content : JSON.stringify(log.content, null, 2)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Metadata */}
         <div className="border-t pt-6">
@@ -399,6 +379,32 @@ export default function ResearchDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Research Conversation */}
+          {research.logs && research.logs.length > 0 && (
+            <div className="mt-2">
+              <Collapsible open={conversationOpen} onOpenChange={setConversationOpen}>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm font-medium text-muted-foreground">Research Conversation</span>
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      <span>{conversationOpen ? 'Hide' : 'Show'}</span>
+                      <ChevronRight className={cn("h-3 w-3 transition-transform", conversationOpen && "rotate-90")} />
+                    </button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  <div className="bg-muted/30 rounded-md border p-3 mt-2">
+                    <MessageList
+                      messages={convertOpenAIMessages(research.logs)}
+                      isTyping={false}
+                      showTimeStamps={false}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -6,6 +6,11 @@ from types import SimpleNamespace
 from dotenv import load_dotenv
 from litellm import acompletion
 from models.wikipedia_tool import search_wikipedia, get_wikipedia_tool_definition
+from models.final_result_tool import (
+    get_final_result_tool_definition,
+    call_final_result_tool,
+)
+from system_prompts import RESEARCH_AGENT_PROMPT
 
 
 load_dotenv()
@@ -39,20 +44,7 @@ class LiteLLMClient:
         """Initialize LiteLLM client."""
         self.local_tools = [
             get_wikipedia_tool_definition(),
-            {
-                "name": "final_result_tool",
-                "description": "The final summary of the deep research task.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "final_result": {
-                            "type": "string",
-                            "description": "The final summary of the deep research task in markdown format",
-                        }
-                    },
-                    "required": ["final_result"],
-                },
-            },
+            get_final_result_tool_definition(),
         ]
 
     def _convert_tools_to_openai_format(self) -> List[Dict[str, Any]]:
@@ -86,14 +78,7 @@ class LiteLLMClient:
             limit = arguments.get("limit", 5)
             return await search_wikipedia(query, limit)
         elif tool_name == "final_result_tool":
-            final_result = arguments.get("final_result", "")
-            return {
-                "final_result_tool": True,
-                "response": final_result,  # Return the same comprehensive result
-                "timestamp": "2025-01-01T00:00:00Z",
-                "success": True,
-                "processed": True,
-            }
+            return await call_final_result_tool(arguments)
         else:
             raise ValueError(f"Unknown local tool: {tool_name}")
 
@@ -103,6 +88,8 @@ class LiteLLMClient:
         model: str = "gemini/gemini-2.5-pro",
     ) -> AsyncGenerator[Tuple[str, Union[str, List[Dict[str, Any]]]], None]:
         """Stream chat response with local tool integration"""
+
+        model = "gemini/gemini-2.5-pro"
 
         # Get local tools and convert to OpenAI format
         openai_tools = self._convert_tools_to_openai_format()
@@ -114,7 +101,7 @@ class LiteLLMClient:
         if not has_system_message:
             system_prompt = {
                 "role": "system",
-                "content": """You are a deep research agent. You have access to a wikipedia_search tool that can search Wikipedia for comprehensive information. Use this tool when you need to gather factual information about topics, people, events, or concepts. After presenting your extensive research findings, call the final_result_tool to return a short summary of the deep research task. Don't generate a single token after this tool call.""",
+                "content": RESEARCH_AGENT_PROMPT,
             }
             chat_messages.insert(0, system_prompt)
         new_messages = []

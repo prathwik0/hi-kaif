@@ -1,0 +1,8 @@
+[MASTER]
+# Only check for errors, fatal issues
+disable=all
+enable=E,F
+
+[MESSAGES CONTROL]
+# Don’t bother with style, refactor and warnings
+disable=C,R,W

@@ -388,6 +388,14 @@ function ToolCall({ toolInvocations, showSuccessMessage }: ToolCallProps) {
               );
             }
 
+            if (typeof resultData === "object" && resultData !== null && "final_result_tool" in resultData) {
+              return (
+                <React.Fragment key={index}>
+                  <FinalResultCard result={resultData as FinalResultData} />
+                </React.Fragment>
+              );
+            }
+
             if (typeof resultData === "object"){
               return <div key={index}>
                 {JSON.stringify(resultData)}
@@ -417,6 +425,29 @@ function ToolCall({ toolInvocations, showSuccessMessage }: ToolCallProps) {
   );
 }
 
+interface FinalResultData {
+  final_result_tool: boolean;
+  title: string;
+  keywords: string[];
+  introduction: string;
+  content: string;
+  conclusion: string;
+  references: Array<{
+    title: string;
+    url?: string;
+    type: string;
+    accessed_date?: string;
+  }>;
+  thumbnail?: string;
+  images?: Array<{
+    url: string;
+    description?: string;
+  }>;
+  timestamp: string;
+  success: boolean;
+  processed: boolean;
+}
+
 interface WikipediaResult {
   search_query: string;
   results: Array<{
@@ -430,6 +461,221 @@ interface WikipediaResult {
   }>;
   total_results: number;
   success: boolean;
+}
+
+interface FinalResultCardProps {
+  result: FinalResultData;
+}
+
+function FinalResultCard({ result }: FinalResultCardProps) {
+  const [introductionOpen, setIntroductionOpen] = useState(true);
+  const [contentOpen, setContentOpen] = useState(true);
+  const [conclusionOpen, setConclusionOpen] = useState(true);
+  const [referencesOpen, setReferencesOpen] = useState(true);
+
+  return (
+    <div className="w-full max-w-4xl mx-auto my-4 space-y-6 border border-border rounded-xl bg-background p-4 shadow-sm">
+      {/* Hero Section with Thumbnail and Keywords */}
+      {result.thumbnail && (
+        <div className="relative rounded-xl overflow-hidden shadow-lg">
+          <a
+            href={result.thumbnail}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <img
+              src={result.thumbnail}
+              alt="Research topic thumbnail"
+              className="w-full h-48 md:h-64 object-cover"
+            />
+          </a>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
+              {result.title}
+            </h1>
+            <div className="flex flex-wrap gap-2">
+              {result.keywords.map((keyword, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 backdrop-blur-sm text-white border border-white/30"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fallback title if no thumbnail */}
+      {!result.thumbnail && (
+        <div className="text-center py-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+            {result.title}
+          </h1>
+          <div className="flex flex-wrap justify-center gap-2">
+            {result.keywords.map((keyword, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary"
+              >
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Content Sections */}
+      <div className="space-y-4">
+          {/* Introduction Section */}
+          <Collapsible open={introductionOpen} onOpenChange={setIntroductionOpen}>
+            <div className="flex items-center justify-between py-2">
+              <h3 className="text-lg font-semibold text-foreground">Introduction</h3>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <span>{introductionOpen ? 'Hide' : 'Show'}</span>
+                  <ChevronRight className={cn("h-4 w-4 transition-transform", introductionOpen && "rotate-90")} />
+                </button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent>
+              <div className="prose prose-sm max-w-none text-foreground/90 leading-relaxed">
+                <MarkdownRenderer>{result.introduction}</MarkdownRenderer>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Images Section */}
+          {Array.isArray(result.images) && result.images.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 py-4">
+              {result.images.slice(0, 6).map((image, index) => (
+                <div key={index} className="group">
+                  <a
+                    href={image.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <img
+                      src={image.url}
+                      alt={image.description || `Related image ${index + 1}`}
+                      className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </a>
+                  {image.description && (
+                    <p className="text-xs text-muted-foreground mt-2 px-1">
+                      {image.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Content Section */}
+          <Collapsible open={contentOpen} onOpenChange={setContentOpen}>
+            <div className="flex items-center justify-between py-2">
+              <h3 className="text-lg font-semibold text-foreground">Content</h3>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <span>{contentOpen ? 'Hide' : 'Show'}</span>
+                  <ChevronRight className={cn("h-4 w-4 transition-transform", contentOpen && "rotate-90")} />
+                </button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent>
+              <div className="prose prose-sm max-w-none text-foreground/90 leading-relaxed">
+                <MarkdownRenderer>{result.content}</MarkdownRenderer>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Conclusion Section */}
+          <Collapsible open={conclusionOpen} onOpenChange={setConclusionOpen}>
+            <div className="flex items-center justify-between py-2">
+              <h3 className="text-lg font-semibold text-foreground">Conclusion</h3>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <span>{conclusionOpen ? 'Hide' : 'Show'}</span>
+                  <ChevronRight className={cn("h-4 w-4 transition-transform", conclusionOpen && "rotate-90")} />
+                </button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent>
+              <div className="prose prose-sm max-w-none text-foreground/90 leading-relaxed">
+                <MarkdownRenderer>{result.conclusion}</MarkdownRenderer>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* References Section */}
+          {result.references && result.references.length > 0 && (
+            <Collapsible open={referencesOpen} onOpenChange={setReferencesOpen}>
+              <div className="flex items-center justify-between py-2">
+                <h3 className="text-lg font-semibold text-foreground">References</h3>
+                <CollapsibleTrigger asChild>
+                  <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    <span>{referencesOpen ? 'Hide' : 'Show'}</span>
+                    <ChevronRight className={cn("h-4 w-4 transition-transform", referencesOpen && "rotate-90")} />
+                  </button>
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent>
+                <div className="space-y-3 mt-4">
+                  {result.references.map((ref, index) => (
+                    <div key={index} className="flex items-start gap-4 p-4 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <span className="text-sm font-medium text-muted-foreground min-w-[24px] mt-0.5">
+                        [{index + 1}]
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          {ref.url ? (
+                            <a
+                              href={ref.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-primary hover:underline"
+                            >
+                              {ref.title}
+                            </a>
+                          ) : (
+                            <span className="text-sm font-medium text-foreground">{ref.title}</span>
+                          )}
+                          <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full border border-primary/20">
+                            {ref.type}
+                          </span>
+                        </div>
+                        {ref.accessed_date && (
+                          <div className="text-xs text-muted-foreground">
+                            Accessed: {new Date(ref.accessed_date).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
+          {/* Footer */}
+          <div className="pt-6 border-t border-border/50">
+            <div className="text-xs text-muted-foreground text-center">
+              Research completed on {new Date(result.timestamp).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </div>
+          </div>
+      </div>
+    </div>
+  );
 }
 
 interface WikipediaResultsProps {

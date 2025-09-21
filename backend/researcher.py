@@ -89,7 +89,7 @@ class LiteLLMClient:
     ) -> AsyncGenerator[Tuple[str, Union[str, List[Dict[str, Any]]]], None]:
         """Stream chat response with local tool integration"""
 
-        model = "gemini/gemini-2.5-pro"
+        # model = "gemini/gemini-2.5-pro"
 
         # Get local tools and convert to OpenAI format
         openai_tools = self._convert_tools_to_openai_format()
@@ -264,6 +264,14 @@ class LiteLLMClient:
                             "tool_result",
                             f"data: {json.dumps({'tr': {'tool_call_id': tool_call_id, 'content': error_tool_message['content'], 'error': True}})}\n\n",
                         )
+
+                # Check if final result tool was called - if so, break the loop
+                final_result_called = any(
+                    tc["function"]["name"] == "final_result_tool"
+                    for tc in tool_calls_data
+                )
+                if final_result_called:
+                    break
 
                 # Continue the loop to get the next assistant response
 

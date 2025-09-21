@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import { useChatContext } from "@/components/chat/chat-context";
+import Image from "next/image";
 import { ResearchItem } from "@/lib/api";
 import { Calendar, Search } from "lucide-react";
 import ChatWindow from "./chatwindow";
@@ -87,6 +88,16 @@ export default function GalleryPage() {
     return () => cancelAnimationFrame(raf);
   }, [columnsCount, researchItems.length]);
 
+  // Precompute independently scrollable, seamless column buckets
+  const columnBuckets = useMemo(() => {
+    const buckets: ResearchItem[][] = Array.from({ length: columnsCount }, () => []);
+    for (let i = 0; i < researchItems.length; i++) {
+      buckets[i % columnsCount].push(researchItems[i]);
+    }
+    // Duplicate each bucket for seamless loop
+    return buckets.map((bucket) => [...bucket, ...bucket]);
+  }, [researchItems, columnsCount]);
+
   if (galleryLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -121,8 +132,7 @@ export default function GalleryPage() {
   // Create independently scrollable, seamless columns
   const columns: React.ReactElement[] = [];
   for (let col = 0; col < columnsCount; col++) {
-    const columnItems = researchItems.filter((_, idx) => idx % columnsCount === col);
-    const duplicatedColumnItems = [...columnItems, ...columnItems]; // exactly 2x for seamless loop
+    const duplicatedColumnItems = columnBuckets[col] || []; // already duplicated for seamless loop
 
     columns.push(
       <div key={col} className="h-full w-48 flex-shrink-0 overflow-hidden">
@@ -160,13 +170,14 @@ export default function GalleryPage() {
 
       {/* Research Input */}
       <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-20">
-        <form onSubmit={handleResearchSubmit} className="flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border rounded-full px-4 py-2 shadow-lg">
+        <form onSubmit={handleResearchSubmit} className="flex items-center gap-2 bg-foreground/30 backdrop-blur-md border border-border rounded-full px-4 py-2 shadow-lg">
           <input
             type="text"
             value={researchQuery}
             onChange={(e) => setResearchQuery(e.target.value)}
             placeholder="Research any topic..."
-            className="bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground flex-1 min-w-0"
+            className="bg-transparent border-none outline-none text-base placeholder:text-background flex-1 sm:w-96"
+            suppressHydrationWarning
             autoFocus
           />
           <button
@@ -183,6 +194,7 @@ export default function GalleryPage() {
       {showChatOverlay && (
         <ChatWindow
           initialQuery={researchQuery}
+          hideControls={true}
           onClose={() => {
             setShowChatOverlay(false);
             setResearchQuery("");
@@ -205,32 +217,44 @@ const pastelColors = [
   'bg-yellow-300'
 ];
 
-// Function to get random pastel color
-const getRandomPastelColor = () => {
-  return pastelColors[Math.floor(Math.random() * pastelColors.length)];
+// Function to get consistent pastel color based on item ID
+const getPastelColor = (itemId: string) => {
+  // Use a simple hash of the item ID to get consistent color assignment
+  let hash = 0;
+  for (let i = 0; i < itemId.length; i++) {
+    hash = ((hash << 5) - hash) + itemId.charCodeAt(i);
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return pastelColors[Math.abs(hash) % pastelColors.length];
 };
 
 function ResearchCard({ item }: ResearchCardProps) {
-  const formattedDate = new Date(item.created_at).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  const formattedDate = useMemo(() => {
+    return new Date(item.created_at).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }, [item.created_at]);
 
   return (
-    <Link href={`/gallery/${item.researchID}`}>
+    <Link prefetch={false} href={`/gallery/${item.researchID}`}>
       <div
         className="group relative overflow-hidden rounded-lg border border-border bg-background transition-all duration-300 cursor-pointer w-48 flex-shrink-0"
       >
       <div className="relative h-36 overflow-hidden rounded-lg">
         {item.thumbnail ? (
-          <img
+          <Image
             src={item.thumbnail}
             alt={item.title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 contrast-100"
+            fill
+            sizes="192px"
+            loading="lazy"
+            className="object-cover transition-transform duration-300 group-hover:scale-110 contrast-100"
+            unoptimized
           />
         ) : (
-          <div className={`w-full h-full ${getRandomPastelColor()}`}></div>
+          <div className={`w-full h-full ${getPastelColor(item.researchID.toString())}`}></div>
         )}
 
         {/* Text overlay */}

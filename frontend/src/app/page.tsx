@@ -18,7 +18,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { LLMClient } from "@/lib/api";
 import { useChat } from "@/hooks/use-chat";
 import { useTranscription } from "@/hooks/use-transcription";
 import { type Message, type MessageUIPart } from "@/lib/message-utils";
@@ -28,6 +27,7 @@ import { CopyButton } from "@/components/chat/copy-button";
 import { MessageInput } from "@/components/chat/message-input";
 import { MessageList } from "@/components/chat/message-list";
 import { PromptSuggestions } from "@/components/chat/prompt-suggestions";
+import { useChatContext } from "@/components/chat/chat-context";
 
 const LANGUAGES: {
   value: string;
@@ -39,17 +39,11 @@ const LANGUAGES: {
 ];
 
 interface ChatWindowProps {
-  apiUrl: string;
-  modelName: string;
   className?: string;
 }
 
-function ChatWindow({
-  apiUrl,
-  modelName,
-}: ChatWindowProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
-  const [llmClient] = useState(() => new LLMClient(apiUrl, modelName));
+function ChatWindow({}: ChatWindowProps) {
+  const { llmClient, modelName, selectedLanguage, setSelectedLanguage } = useChatContext();
 
   useEffect(() => {
     const originalBodyOverflow = document.body.style.overflow;
@@ -119,7 +113,6 @@ function ChatWindow({
           shouldAutoScroll={shouldAutoScroll}
           isScrolling={isScrolling}
           scrollToBottom={scrollToBottom}
-          llmClient={llmClient}
         />
       </div>
     </div>
@@ -198,7 +191,6 @@ interface ChatProps {
   shouldAutoScroll?: boolean;
   isScrolling?: boolean;
   scrollToBottom?: () => void;
-  llmClient: LLMClient;
   // currentDistanceFromBottom?: number;
 }
 
@@ -223,7 +215,6 @@ function Chat({
   shouldAutoScroll,
   scrollToBottom,
   isScrolling,
-  llmClient,
 }: // currentDistanceFromBottom,
 ChatProps) {
   const lastMessage = messages.at(-1);
@@ -497,10 +488,5 @@ function createFileList(files: File[] | FileList): FileList {
 }
 
 export default function Page() {
-  return (
-    <ChatWindow
-      apiUrl={process.env.NEXT_PUBLIC_API_URL || ""}
-      modelName={process.env.NEXT_PUBLIC_MODEL_NAME || "gemini/gemini-2.5-flash"}
-    />
-  );
+  return <ChatWindow />;
 }

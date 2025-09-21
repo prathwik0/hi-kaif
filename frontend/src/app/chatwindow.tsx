@@ -41,9 +41,10 @@ interface ChatWindowProps {
   className?: string;
   initialQuery?: string;
   onClose?: () => void;
+  hideControls?: boolean;
 }
 
-export default function ChatWindow({ initialQuery, onClose }: ChatWindowProps) {
+export default function ChatWindow({ initialQuery, onClose, hideControls }: ChatWindowProps) {
   const { llmClient, modelName, selectedLanguage, setSelectedLanguage } = useChatContext();
 
   useEffect(() => {
@@ -71,8 +72,10 @@ export default function ChatWindow({ initialQuery, onClose }: ChatWindowProps) {
   });
 
   // Auto-submit initial query
+  const submittedQueriesRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (initialQuery && messages.length === 0) {
+    if (initialQuery && messages.length === 0 && !submittedQueriesRef.current.has(initialQuery)) {
+      submittedQueriesRef.current.add(initialQuery);
       append({ role: "user", content: initialQuery });
     }
   }, [initialQuery, messages.length, append]);
@@ -123,6 +126,7 @@ export default function ChatWindow({ initialQuery, onClose }: ChatWindowProps) {
           isScrolling={isScrolling}
           scrollToBottom={scrollToBottom}
           onClose={onClose}
+          hideControls={hideControls}
         />
       </div>
     </div>
@@ -202,6 +206,7 @@ interface ChatProps {
   isScrolling?: boolean;
   scrollToBottom?: () => void;
   onClose?: () => void;
+  hideControls?: boolean;
   // currentDistanceFromBottom?: number;
 }
 
@@ -227,6 +232,7 @@ function Chat({
   scrollToBottom,
   isScrolling,
   onClose,
+  hideControls,
 }: // currentDistanceFromBottom,
 ChatProps) {
   const lastMessage = messages.at(-1);
@@ -371,32 +377,34 @@ ChatProps) {
                   <X className="h-4 w-4" />
                 </Button>
               )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    aria-label="Select language"
-                  >
-                    <span className="text-xs font-medium">
-                      {LANGUAGES.find((lang) => lang.value === selectedLanguage)
-                        ?.label.slice(0, 2)
-                        .toUpperCase()}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {LANGUAGES.map((lang) => (
-                    <DropdownMenuItem
-                      key={lang.value}
-                      onSelect={() => onLanguageChange(lang.value)}
+              {!hideControls && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Select language"
                     >
-                      {lang.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      <span className="text-xs font-medium">
+                        {LANGUAGES.find((lang) => lang.value === selectedLanguage)
+                          ?.label.slice(0, 2)
+                          .toUpperCase()}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {LANGUAGES.map((lang) => (
+                      <DropdownMenuItem
+                        key={lang.value}
+                        onSelect={() => onLanguageChange(lang.value)}
+                      >
+                        {lang.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <ThemeToggle className="h-8 w-8" />
             </div>
           </div>
@@ -441,28 +449,30 @@ ChatProps) {
         </div>
       </div>
 
-      {/* Chat Input - Always Visible */}
-      <div className="sticky bottom-0 left-0 right-0 z-10 rounded-md bg-gradient-to-t from-background/80 via-background/60 to-transparent dark:from-background/80 dark:via-background/60 dark:to-transparent">
-        <div className="max-w-3xl mx-auto">
-          <ChatForm
-            className="mt-auto px-1.5"
-            isPending={isGenerating || isTyping}
-            handleSubmit={handleSubmit}
-          >
-            <MessageInput
-              value={input}
-              onChange={handleInputChange}
-              stop={handleStop}
-              isGenerating={isGenerating}
-              transcribeAudio={transcribeAudio}
-              shouldAutoScroll={shouldAutoScroll}
-              scrollToBottom={scrollToBottom}
-              resetChat={resetChat}
-              isScrolling={isScrolling}
-            />
-          </ChatForm>
+      {/* Chat Input - Conditionally Visible */}
+      {!hideControls && (
+        <div className="sticky bottom-0 left-0 right-0 z-10 rounded-md bg-gradient-to-t from-background/80 via-background/60 to-transparent dark:from-background/80 dark:via-background/60 dark:to-transparent">
+          <div className="max-w-3xl mx-auto">
+            <ChatForm
+              className="mt-auto px-1.5"
+              isPending={isGenerating || isTyping}
+              handleSubmit={handleSubmit}
+            >
+              <MessageInput
+                value={input}
+                onChange={handleInputChange}
+                stop={handleStop}
+                isGenerating={isGenerating}
+                transcribeAudio={transcribeAudio}
+                shouldAutoScroll={shouldAutoScroll}
+                scrollToBottom={scrollToBottom}
+                resetChat={resetChat}
+                isScrolling={isScrolling}
+              />
+            </ChatForm>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

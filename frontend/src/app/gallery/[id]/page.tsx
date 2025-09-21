@@ -8,6 +8,7 @@ import { Calendar, ArrowLeft, Tag, Clock, FileText, ChevronRight } from "lucide-
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { MarkdownRenderer } from "@/components/chat/markdown-renderer";
 import { MessageList } from "@/components/chat/message-list";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { convertOpenAIMessages } from "@/lib/message-utils";
 import { cn } from "@/lib/utils";
 
@@ -106,13 +107,16 @@ export default function ResearchDetailPage() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-4">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Gallery
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Gallery
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 

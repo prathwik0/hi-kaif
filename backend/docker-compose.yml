@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hi-kaif-backend
+    environment:
+      # Pass through API keys from your host environment if available
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist SQLite DB on host so data survives container restarts
+      - ./research.db:/app/research.db
+    restart: unless-stopped
+
+

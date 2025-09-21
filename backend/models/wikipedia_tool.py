@@ -1,5 +1,6 @@
 import httpx
 from typing import Dict, Any
+import urllib.parse
 
 
 async def get_page_content(page_title: str) -> str:
@@ -69,6 +70,7 @@ async def search_wikipedia(query: str, limit: int = 5) -> Dict[str, Any]:
 
         if "query" not in search_data or "search" not in search_data["query"]:
             return {
+                "wikipedia_search": True,
                 "search_query": query,
                 "results": [],
                 "total_results": 0,
@@ -83,6 +85,9 @@ async def search_wikipedia(query: str, limit: int = 5) -> Dict[str, Any]:
             page_title = result["title"]
             page_content = await get_page_content(page_title)
 
+            encoded_title = urllib.parse.quote(page_title.replace(" ", "_"))
+            page_url = f"https://en.wikipedia.org/wiki/{encoded_title}"
+
             results.append(
                 {
                     "title": page_title,
@@ -90,6 +95,7 @@ async def search_wikipedia(query: str, limit: int = 5) -> Dict[str, Any]:
                     "pageid": result.get("pageid"),
                     "wordcount": result.get("wordcount", 0),
                     "timestamp": result.get("timestamp", ""),
+                    "url": page_url,
                     "content": page_content,
                 }
             )
@@ -101,6 +107,7 @@ async def search_wikipedia(query: str, limit: int = 5) -> Dict[str, Any]:
             )
 
         return {
+            "wikipedia_search": True,
             "search_query": query,
             "results": results,
             "total_results": len(results),
@@ -111,6 +118,7 @@ async def search_wikipedia(query: str, limit: int = 5) -> Dict[str, Any]:
         error_msg = f"Network error searching Wikipedia: {str(e)}"
         print(error_msg, flush=True)
         return {
+            "wikipedia_search": True,
             "search_query": query,
             "results": [],
             "total_results": 0,
@@ -121,6 +129,7 @@ async def search_wikipedia(query: str, limit: int = 5) -> Dict[str, Any]:
         error_msg = f"Error searching Wikipedia: {str(e)}"
         print(error_msg, flush=True)
         return {
+            "wikipedia_search": True,
             "search_query": query,
             "results": [],
             "total_results": 0,

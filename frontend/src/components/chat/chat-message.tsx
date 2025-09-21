@@ -26,7 +26,7 @@ const chatBubbleVariants = cva(
     variants: {
       isUser: {
         true: "p-3 mr-2 mb-1 bg-muted text-foreground",
-        false: "mx-2 mb-1 text-foreground",
+        false: "mx-2 mb-1 text-foreground w-full",
       },
       animation: {
         none: "",
@@ -380,10 +380,10 @@ function ToolCall({ toolInvocations, showSuccessMessage }: ToolCallProps) {
             const resultData = invocation.result;
             // console.log(resultData);
             
-            if (typeof resultData === "object" && resultData !== null && "generate_graph" in resultData) {
+            if (typeof resultData === "object" && resultData !== null && "wikipedia_search" in resultData) {
               return (
                 <React.Fragment key={index}>
-                  <div className="pb-1">hi</div>
+                  <WikipediaResults result={resultData as WikipediaResult} />
                 </React.Fragment>
               );
             }
@@ -413,6 +413,82 @@ function ToolCall({ toolInvocations, showSuccessMessage }: ToolCallProps) {
             return null;
         }
       })}
+    </div>
+  );
+}
+
+interface WikipediaResult {
+  search_query: string;
+  results: Array<{
+    title: string;
+    snippet: string;
+    pageid: number;
+    wordcount: number;
+    timestamp: string;
+    content: string;
+    url: string;
+  }>;
+  total_results: number;
+  success: boolean;
+}
+
+interface WikipediaResultsProps {
+  result: WikipediaResult;
+}
+
+function WikipediaResults({ result }: WikipediaResultsProps) {
+  if (!result.success || !result.results?.length) {
+    return (
+      <div className="text-sm text-muted-foreground">
+        No Wikipedia results found for "{result.search_query}"
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full space-y-2 pb-2">
+      <div className="text-sm font-medium text-muted-foreground pl-1.5">
+        Wikipedia results for "{result.search_query}" ({result.total_results})
+      </div>
+      <div className="w-full space-y-0 bg-background border border-border/50 rounded-md overflow-hidden">
+        {result.results.map((item, index) => (
+          <Collapsible key={item.pageid} className="group">
+            <div className={cn(
+              "cursor-pointer hover:bg-muted/30 transition-colors py-1.5 px-1.5",
+              index > 0 && "border-t border-border/50"
+            )}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium hover:underline"
+                  >
+                    {item.title}
+                  </a>
+                  <div className="text-xs text-foreground">
+                    <div className="flex justify-between items-center text-xs">
+                      <span>{item.wordcount.toLocaleString()} words</span>
+                      <span><span className="hidden sm:inline">Updated:</span> {new Date(item.timestamp).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+                <CollapsibleTrigger asChild>
+                  <ChevronRight className="h-3 w-3 text-muted-foreground transition-transform group-data-[state=open]:rotate-90 flex-shrink-0 cursor-pointer mt-0.5" />
+                </CollapsibleTrigger>
+              </div>
+            </div>
+            <CollapsibleContent>
+              <div className="mt-1 pl-2 border-t border-border/50">
+                <div className="max-h-64 overflow-y-auto leading-relaxed">
+                  <MarkdownRenderer>{item.content}</MarkdownRenderer>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ))}
+      </div>
     </div>
   );
 }

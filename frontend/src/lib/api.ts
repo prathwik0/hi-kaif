@@ -21,6 +21,12 @@ export interface ResearchItem {
   updated_at: string;
 }
 
+export interface ResearchDetail extends ResearchItem {
+  details?: any;
+  logs?: any[];
+  details_created_at?: string;
+}
+
 // Define types for streamed events
 interface StreamText {
   type: "chunk";
@@ -146,6 +152,20 @@ export class LLMClient {
       return data.research || [];
     } catch (error) {
       console.error("Error fetching research:", error);
+      throw error;
+    }
+  }
+
+  async fetchResearchById(id: number): Promise<ResearchDetail> {
+    try {
+      const response = await fetch(`${this.baseUrl}/research/${id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch research: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.research;
+    } catch (error) {
+      console.error("Error fetching research by ID:", error);
       throw error;
     }
   }

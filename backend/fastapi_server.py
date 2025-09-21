@@ -80,6 +80,15 @@ async def get_research():
     return {"research": db.list_research()}
 
 
+@app.get("/research/{research_id}")
+async def get_research_by_id(research_id: int):
+    """Get full research details by ID"""
+    research = db.get_full_research(research_id)
+    if research is None:
+        raise HTTPException(status_code=404, detail="Research not found")
+    return {"research": research}
+
+
 @app.post("/chat")
 async def chat_stream_with_history(request: ChatHistoryRequest):
     """Stream chat response using provided message history"""

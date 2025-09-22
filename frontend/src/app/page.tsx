@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useChatContext } from "@/components/chat/chat-context";
 import Image from "next/image";
@@ -16,11 +16,11 @@ export default function GalleryPage() {
   const [showChatOverlay, setShowChatOverlay] = useState(false);
   const [researchQuery, setResearchQuery] = useState("");
 
-  const setColumnRef = (index: number) => (el: HTMLDivElement | null) => {
+  const setColumnRef = useCallback((index: number) => (el: HTMLDivElement | null) => {
     columnRefs.current[index] = el;
-  };
+  }, []);
 
-  const ensureLoopBounds = (el: HTMLDivElement | null) => {
+  const ensureLoopBounds = useCallback((el: HTMLDivElement | null) => {
     if (!el) return;
     const half = el.scrollHeight / 2; // content duplicated exactly 2x
     if (half <= 0) return;
@@ -42,20 +42,20 @@ export default function GalleryPage() {
         isAdjustingRef.current = false;
       });
     }
-  };
+  }, []);
 
-  const onColumnScroll = (index: number) => {
+  const onColumnScroll = useCallback((index: number) => {
     const el = columnRefs.current[index];
     if (!el || isAdjustingRef.current) return;
     requestAnimationFrame(() => ensureLoopBounds(el));
-  };
+  }, [ensureLoopBounds]);
 
-  const onColumnWheel = (index: number) => {
+  const onColumnWheel = useCallback((index: number) => {
     const el = columnRefs.current[index];
     if (!el || isAdjustingRef.current) return;
     // After wheel applies, verify bounds on next frame so it works for both up/down
     requestAnimationFrame(() => ensureLoopBounds(el));
-  };
+  }, [ensureLoopBounds]);
 
   useEffect(() => {
     // Fetch gallery data only if not already loaded
@@ -98,109 +98,127 @@ export default function GalleryPage() {
     return buckets.map((bucket) => [...bucket, ...bucket]);
   }, [researchItems, columnsCount]);
 
-  if (galleryLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading research gallery...</p>
-        </div>
+  const loadingUI = useMemo(() => (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Loading research gallery...</p>
       </div>
-    );
-  }
+    </div>
+  ), []);
 
-  if (galleryError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-destructive mb-4">Error: {galleryError}</p>
-          <button
-            onClick={() => {
-              // Clear existing data and retry
-              clearGalleryData();
-              fetchGalleryData();
-            }}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            Try Again
-          </button>
-        </div>
+  const errorUI = useMemo(() => (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-destructive mb-4">Error: {galleryError}</p>
+        <button
+          onClick={() => {
+            // Clear existing data and retry
+            clearGalleryData();
+            fetchGalleryData();
+          }}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          Try Again
+        </button>
       </div>
-    );
-  }
+    </div>
+  ), [galleryError, clearGalleryData, fetchGalleryData]);
 
   // Create independently scrollable, seamless columns
-  const columns: React.ReactElement[] = [];
-  for (let col = 0; col < columnsCount; col++) {
-    const duplicatedColumnItems = columnBuckets[col] || []; // already duplicated for seamless loop
+  const columns = useMemo(() => {
+    const cols: React.ReactElement[] = [];
+    for (let col = 0; col < columnsCount; col++) {
+      const duplicatedColumnItems = columnBuckets[col] || []; // already duplicated for seamless loop
 
-    columns.push(
-      <div key={col} className="h-full w-48 flex-shrink-0 overflow-hidden">
-        <div
-          ref={setColumnRef(col)}
-          onScroll={() => onColumnScroll(col)}
-          onWheel={() => onColumnWheel(col)}
-          className="h-full flex flex-col gap-1 overflow-y-scroll hide-scrollbar"
-        >
-          {duplicatedColumnItems.map((item, index) => (
-            <ResearchCard
-              key={`${item.researchID}-c${col}-${index}`}
-              item={item}
-            />
-          ))}
+      cols.push(
+        <div key={col} className="h-full w-48 flex-shrink-0 overflow-hidden">
+          <div
+            ref={setColumnRef(col)}
+            onScroll={() => onColumnScroll(col)}
+            onWheel={() => onColumnWheel(col)}
+            className="h-full flex flex-col gap-1 overflow-y-scroll hide-scrollbar"
+          >
+            {duplicatedColumnItems.map((item, index) => (
+              <ResearchCard
+                key={`${item.researchID}-c${col}-${index}`}
+                item={item}
+              />
+            ))}
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
+    return cols;
+  }, [columnsCount, columnBuckets, setColumnRef, onColumnScroll, onColumnWheel]);
 
-  const handleResearchSubmit = (e: React.FormEvent) => {
+  const handleResearchSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (researchQuery.trim()) {
       setShowChatOverlay(true);
     }
-  };
+  }, [researchQuery]);
+
+  const handleChatClose = useCallback(() => {
+    setShowChatOverlay(false);
+    setResearchQuery("");
+  }, []);
+
+  const galleryContent = useMemo(() => (
+    <div className="h-full w-full p-1 overflow-hidden">
+      <div className="h-full w-full flex gap-1 overflow-hidden">
+        {columns}
+      </div>
+    </div>
+  ), [columns]);
+
+  const researchInput = useMemo(() => (
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-20">
+      <form onSubmit={handleResearchSubmit} className="flex items-center gap-2 bg-foreground/30 backdrop-blur-md border border-border rounded-full px-4 py-2 shadow-lg">
+        <input
+          type="text"
+          value={researchQuery}
+          onChange={(e) => setResearchQuery(e.target.value)}
+          placeholder="Research any topic..."
+          className="bg-transparent border-none outline-none text-base placeholder:text-background flex-1 sm:w-96"
+          suppressHydrationWarning
+          autoFocus
+        />
+        <button
+          type="submit"
+          className="bg-primary text-primary-foreground rounded-full p-2 hover:bg-primary/90 transition-colors"
+          disabled={!researchQuery.trim()}
+        >
+          <Search className="w-4 h-4" />
+        </button>
+      </form>
+    </div>
+  ), [researchQuery, handleResearchSubmit]);
+
+  const chatOverlay = useMemo(() => {
+    if (!showChatOverlay) return null;
+    return (
+      <ChatWindow
+        initialQuery={researchQuery}
+        hideControls={true}
+        onClose={handleChatClose}
+      />
+    );
+  }, [showChatOverlay, researchQuery, handleChatClose]);
+
+  if (galleryLoading) {
+    return loadingUI;
+  }
+
+  if (galleryError) {
+    return errorUI;
+  }
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background fixed inset-0">
-      <div className="h-full w-full p-1 overflow-hidden">
-        <div className="h-full w-full flex gap-1 overflow-hidden">
-          {columns}
-        </div>
-      </div>
-
-      {/* Research Input */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-20">
-        <form onSubmit={handleResearchSubmit} className="flex items-center gap-2 bg-foreground/30 backdrop-blur-md border border-border rounded-full px-4 py-2 shadow-lg">
-          <input
-            type="text"
-            value={researchQuery}
-            onChange={(e) => setResearchQuery(e.target.value)}
-            placeholder="Research any topic..."
-            className="bg-transparent border-none outline-none text-base placeholder:text-background flex-1 sm:w-96"
-            suppressHydrationWarning
-            autoFocus
-          />
-          <button
-            type="submit"
-            className="bg-primary text-primary-foreground rounded-full p-2 hover:bg-primary/90 transition-colors"
-            disabled={!researchQuery.trim()}
-          >
-            <Search className="w-4 h-4" />
-          </button>
-        </form>
-      </div>
-
-      {/* Chat Overlay */}
-      {showChatOverlay && (
-        <ChatWindow
-          initialQuery={researchQuery}
-          hideControls={true}
-          onClose={() => {
-            setShowChatOverlay(false);
-            setResearchQuery("");
-          }}
-        />
-      )}
+      {galleryContent}
+      {researchInput}
+      {chatOverlay}
     </div>
   );
 }
@@ -228,7 +246,7 @@ const getPastelColor = (itemId: string) => {
   return pastelColors[Math.abs(hash) % pastelColors.length];
 };
 
-function ResearchCard({ item }: ResearchCardProps) {
+const ResearchCard = React.memo(({ item }: ResearchCardProps) => {
   const formattedDate = useMemo(() => {
     return new Date(item.created_at).toLocaleDateString('en-US', {
       month: 'short',
@@ -244,8 +262,17 @@ function ResearchCard({ item }: ResearchCardProps) {
       >
       <div className="relative h-36 overflow-hidden rounded-lg">
         {item.thumbnail ? (
+          // <Image
+          //   src={item.thumbnail}
+          //   alt={item.title}
+          //   fill
+          //   sizes="192px"
+          //   loading="lazy"
+          //   className="object-cover transition-transform duration-300 group-hover:scale-110 contrast-100"
+          //   unoptimized
+          // />
           <Image
-            src={item.thumbnail}
+            src={`https://picsum.photos/seed/${item.researchID}/400/300`}
             alt={item.title}
             fill
             sizes="192px"
@@ -275,4 +302,4 @@ function ResearchCard({ item }: ResearchCardProps) {
     </div>
     </Link>
   );
-}
+});
